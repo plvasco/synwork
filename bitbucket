@@ -1,0 +1,21 @@
+image: atlassian/default-image:4  # Base Docker image
+
+pipelines:
+  default:
+    - step:
+        name: Build and Test
+        runs-on:
+          - self.hosted  # Use the self-hosted runner
+        script:
+          - echo "Running on self-hosted runner"
+          - npm install
+          - npm test
+
+    - step:
+        name: Deploy
+        runs-on:
+          - self.hosted
+        deployment: production
+        script:
+          - echo "Deploying application"
+          - ./deploy.sh
