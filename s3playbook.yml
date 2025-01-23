@@ -1,0 +1,46 @@
+---
+- name: Create S3 Bucket with Encryption, Replication, and Multi-Regional Access
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Create a new S3 bucket with encryption
+      amazon.aws.aws_s3:
+        bucket: my-unique-bucket-name-12345
+        mode: create
+        region: us-east-1
+        encryption: AES256
+      register: s3_result
+
+    - name: Enable bucket versioning (required for replication)
+      amazon.aws.aws_s3:
+        bucket: my-unique-bucket-name-12345
+        versioning: yes
+        region: us-east-1
+
+    - name: Set up replication configuration
+      amazon.aws.s3_bucket_replication:
+        name: my-unique-bucket-name-12345
+        destination_bucket: my-replica-bucket-name-67890
+        destination_region: us-west-2
+        role: arn:aws:iam::123456789012:role/s3-replication-role
+        rules:
+          - id: replicate-all
+            status: enabled
+            prefix: ''
+            delete_marker_replication: disabled
+
+    - name: Enable multi-regional access point
+      amazon.aws.s3_access_point:
+        name: my-multi-region-access-point
+        bucket: my-unique-bucket-name-12345
+        region: us-east-1
+        public_access_block:
+          block_public_acls: true
+          ignore_public_acls: true
+          block_public_policy: true
+          restrict_public_buckets: true
+      register: access_point_result
+
+    - name: Display the result
+      debug:
+        var: s3_result
