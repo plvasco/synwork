@@ -1,0 +1,70 @@
+---
+- name: Deploy Bitbucket Runner in Kubernetes
+  hosts: localhost
+  tasks:
+    - name: Create Kubernetes namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: bitbucket-runner
+
+    - name: Create service account
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: bitbucket-runner-sa
+            namespace: bitbucket-runner
+
+    - name: Create Bitbucket runner deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: bitbucket-runner
+            namespace: bitbucket-runner
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: bitbucket-runner
+            template:
+              metadata:
+                labels:
+                  app: bitbucket-runner
+              spec:
+                serviceAccountName: bitbucket-runner-sa
+                containers:
+                - name: bitbucket-runner
+                  image: bitbucket-runner-image:latest
+                  env:
+                  - name: BITBUCKET_URL
+                    value: "https://your-bitbucket-url"
+                  - name: RUNNER_TOKEN
+                    value: "your-runner-token"
+                  ports:
+                  - containerPort: 8080
+
+    - name: Expose Bitbucket runner service
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: bitbucket-runner-service
+            namespace: bitbucket-runner
+          spec:
+            selector:
+              app: bitbucket-runner
+            ports:
+              - protocol: TCP
+                port: 80
+                targetPort: 8080
