@@ -1,0 +1,7 @@
+- name: Deploy Bitbucket Runner on EKS
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Deploy Bitbucket Runner
+      include_role:
+        name: deploy-bitbucket-runner
