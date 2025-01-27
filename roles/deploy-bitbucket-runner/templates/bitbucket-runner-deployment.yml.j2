@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bitbucket-runner
+  namespace: bitbucket-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitbucket-runner
+  template:
+    metadata:
+      labels:
+        app: bitbucket-runner
+    spec:
+      serviceAccountName: bitbucket-runner-sa
+      containers:
+        - name: bitbucket-runner
+          image: docker.io/atlassian/bitbucket-pipelines-runner:latest
+          env:
+            - name: BITBUCKET_ACCESS_TOKEN
+              value: "{{ bitbucket_access_token }}"
+            - name: BITBUCKET_WORKSPACE
+              value: "{{ bitbucket_workspace }}"
+          ports:
+            - containerPort: 8080
