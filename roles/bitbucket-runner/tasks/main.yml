@@ -1,0 +1,50 @@
+---
+- name: install pre-requisites
+  pip:
+    name:
+      - pyyaml
+      - kubernetes 
+      - jsonpatch
+
+- name: "Get the EKS token"
+  command: aws eks get-token --profile engy --cluster-name bb-agent-cluster
+  environment:
+    AWS_SHARED_CREDENTIALS_FILE: ~/.aws/credentials
+  register: eks_token_json
+
+- name: "Set EKS token"
+  set_fact:
+    eks_api_token: "{{ eks_token_json.stdout | from_json | json_query('status.token') }}"
+
+- name: "Set kube config token"
+  set_fact:
+    kubeconfig: "~/.kube/config"
+
+
+- name: Encode OAuth credentials
+  set_fact:
+    base64_oauth_client_id: "{{ oauth_client_id | b64encode }}"
+    base64_oauth_client_secret: "{{ oauth_client_secret | b64encode }}"
+
+- name: Ensure namespace exists
+  kubernetes.core.k8s:
+    api_key: "{{ eks_api_token }}"
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ runner_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Create Kubernetes Secret
+  kubernetes.core.k8s:
+    api_key: "{{ eks_api_token }}"
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    template: secret.yaml.j2
+
+- name: Deploy Bitbucket Runner Job
+  kubernetes.core.k8s:
+    api_key: "{{ eks_api_token }}"
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    template: runner-job.yaml.j2
