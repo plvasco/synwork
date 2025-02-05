@@ -7,7 +7,7 @@
       - jsonpatch
 
 - name: "Get the EKS token"
-  command: aws eks get-token --profile engy --cluster-name bb-agent-cluster
+  command: aws eks get-token --profile {{ AWS_PROFILE }} --cluster-name bb-agent-cluster
   environment:
     AWS_SHARED_CREDENTIALS_FILE: ~/.aws/credentials
   register: eks_token_json

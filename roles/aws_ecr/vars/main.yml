@@ -1,0 +1,23 @@
+ecr_repositories:
+  - name: super/cool1
+    policy:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: read-only  
+          Effect: "Allow"      
+          Principal: "*"
+          Action:
+            - "ecr:GetDownloadUrlForLayer"
+            - "ecr:BatchGetImage"
+
+  - name: super/cool2
+    policy:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: read-only  
+          Effect: "Allow"
+          Principal:
+            AWS: "arn:aws:iam::910225013196:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS"
+          Action:
+            - "ecr:GetAuthorizationToken"
+            - "ecr:BatchCheckLayerAvailability"

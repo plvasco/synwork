@@ -1,0 +1,9 @@
+- hosts: localhost
+  gather_facts: no
+  vars:
+    AWS_PROFILE: "engy"
+    AWS_REGION: "us-east-1"
+  roles:
+    - aws_ecr
+  vars_files:
+    - roles/aws_ecr/vars/main.yaml

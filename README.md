@@ -17,3 +17,12 @@ ansible-playbook -i inventory/staging playbook.yaml -e @roles/bitbucket-runner/v
 
 # To prod
 ansible-playbook -i inventory/staging playbook.yaml -e @roles/bitbucket-runner/vars/staging.yaml
+
+
+
+# Deploy ecr role
+
+## Update roles/aws_ecr/vars/main.yml and add ecr repo names and related policies if required.
+
+# Run pipeline.
+ansible-playbook playbook-ecr.yaml
