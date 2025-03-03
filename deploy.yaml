@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bitbucket-runner
+  namespace: default  # Change if using a different namespace
+  labels:
+    app: bitbucket-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitbucket-runner
+  template:
+    metadata:
+      labels:
+        app: bitbucket-runner
+    spec:
+      containers:
+        - name: runner
+          image: docker.io/atlassian/bitbucket-pipelines-runner:latest
+          env:
+            - name: BITBUCKET_WORKSPACE
+              value: "<BITBUCKET_WORKSPACE>"  # Your Bitbucket workspace
+            - name: BITBUCKET_REPOSITORY
+              value: "<BITBUCKET_REPOSITORY>"  # Your repository name
+            - name: BITBUCKET_RUNNER_UUID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: BITBUCKET_RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bitbucket-runner-secret
+                  key: runner-token
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bitbucket-runner-secret
+  namespace: default
+type: Opaque
+data:
+  runner-token: "<BASE64_ENCODED_RUNNER_TOKEN>"
