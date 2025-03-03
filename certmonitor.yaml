@@ -1,0 +1,71 @@
+- name: Monitor AWS ACM Certificates Expiration
+  hosts: localhost
+  gather_facts: no
+  vars:
+    aws_region: "us-east-1"
+    sns_topic_name: "ACM-Certificate-Alerts"
+    sns_display_name: "AWS ACM Expiry Alerts"
+    sns_email: "your-email@example.com"
+    event_rule_name: "ACM-Certificate-Expiry-Monitor"
+    expiry_days_threshold: 30
+
+  tasks:
+    - name: Ensure AWS collections are installed
+      ansible.builtin.command: ansible-galaxy collection install amazon.aws
+      changed_when: false
+
+    # Step 1: List ACM Certificates and Identify Expiring Ones
+    - name: Get ACM Certificates
+      amazon.aws.acm_info:
+        region: "{{ aws_region }}"
+      register: acm_certs
+
+    - name: Identify Expiring Certificates
+      set_fact:
+        expiring_certs: "{{ acm_certs.certificates | selectattr('not_after', 'defined') | selectattr('not_after', 'lt', (ansible_date_time.epoch | int + (expiry_days_threshold * 86400)) | to_datetime) | list }}"
+
+    - name: Show Expiring Certificates
+      debug:
+        msg: "Expiring Certificates: {{ expiring_certs | map(attribute='certificate_arn') | list }}"
+      when: expiring_certs | length > 0
+
+    # Step 2: Create an SNS Topic for Certificate Expiry Alerts
+    - name: Create SNS Topic
+      amazon.aws.sns_topic:
+        name: "{{ sns_topic_name }}"
+        display_name: "{{ sns_display_name }}"
+        region: "{{ aws_region }}"
+      register: sns_topic
+
+    - name: Subscribe Email to SNS Topic
+      amazon.aws.sns_topic_subscription:
+        topic: "{{ sns_topic_name }}"
+        protocol: "email"
+        endpoint: "{{ sns_email }}"
+        region: "{{ aws_region }}"
+
+    # Step 3: Create an EventBridge Rule for ACM Certificate Expiration
+    - name: Create EventBridge Rule for Certificate Expiry
+      amazon.aws.eventbridge_rule:
+        name: "{{ event_rule_name }}"
+        event_pattern: |
+          {
+            "source": ["aws.acm"],
+            "detail-type": ["ACM Certificate Approaching Expiration"],
+            "detail": {
+              "certificateArn": []
+            }
+          }
+        state: "enabled"
+        region: "{{ aws_region }}"
+
+    # Step 4: Add SNS Target to EventBridge Rule
+    - name: Add SNS Target to EventBridge Rule
+      amazon.aws.eventbridge_target:
+        rule: "{{ event_rule_name }}"
+        arn: "{{ sns_topic.response.arn }}"
+        region: "{{ aws_region }}"
+      when: sns_topic is defined
+
+    - debug:
+        msg: "EventBridge Rule '{{
