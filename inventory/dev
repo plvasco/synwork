@@ -1,3 +1,0 @@
-[eks]
-localhost ansible_connection=local
-runner_namespace=bitbucket-runner
