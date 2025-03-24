@@ -1,0 +1,58 @@
+Set a User Variable:
+Use the [Environment]::SetEnvironmentVariable method.
+
+Syntax: [Environment]::SetEnvironmentVariable("VARIABLE_NAME", "VALUE", "User")
+
+Example: To set a variable called MY_PATH to C:\CustomFolder, run:
+powershell
+
+[Environment]::SetEnvironmentVariable("MY_PATH", "C:\CustomFolder", "User")
+
+Verify the Change:
+The change won’t immediately reflect in the current session. To check it in PowerShell, either:
+Open a new PowerShell window and type:
+powershell
+
+$env:MY_PATH
+
+Or, refresh the current session’s environment variables with:
+powershell
+
+$env:MY_PATH = [Environment]::GetEnvironmentVariable("MY_PATH", "User")
+
+You should see C:\CustomFolder.
+
+Append to PATH (if needed):
+To append a directory to the existing user PATH (e.g., C:\Tools), run:
+powershell
+
+$currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+[Environment]::SetEnvironmentVariable("PATH", "$currentPath;C:\Tools", "User")
+
+This retrieves the current PATH, appends C:\Tools, and saves it back.
+
+Notes:
+Persistence: These changes are persistent across sessions, unlike temporary variables set with $env:VARIABLE_NAME = "VALUE".
+
+No Spaces: Ensure the value is correctly formatted (e.g., use quotes if it contains spaces).
+
+Case Sensitivity: Variable names aren’t case-sensitive in Windows, but it’s good practice to be consistent.
+
+Example Commands
+Set a simple variable:
+powershell
+
+[Environment]::SetEnvironmentVariable("MY_VAR", "HelloWorld", "User")
+
+Append to PATH:
+powershell
+
+$currentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+[Environment]::SetEnvironmentVariable("PATH", "$currentPath;C:\NewFolder", "User")
+
+Check All User Variables
+To list all user environment variables in PowerShell:
+powershell
+
+[Environment]::GetEnvironmentVariables("User")
+
