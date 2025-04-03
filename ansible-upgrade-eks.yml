@@ -1,0 +1,141 @@
+- name: Upgrade Amazon EKS from 1.30 to 1.31
+  hosts: localhost
+  gather_facts: no
+  vars:
+    cluster_name: "e2g-eks-mng-al2"
+    aws_profile: "engy"
+    aws_region: "us-east-1"
+    k8s_version: "1.31"
+    expected_current_version: "1.30"
+    retry_count: 40
+    retry_delay: 180
+
+  tasks:
+    - name: check ansible version
+      when: (ansible_version.major == 2 and ansible_version.minor < 10 ) or (ansible_version.major < 2)
+      run_once: yes
+      fail:
+        msg: Please use Ansible 2.10 or newer
+
+    - name: Get Python interpreter used by Ansible
+      command: "{{ ansible_python_interpreter }} -c 'import sys; print(sys.executable)'"
+      register: ansible_python_bin
+      changed_when: false
+
+    - name: Check if pexpect is installed in Ansible's Python
+      command: "{{ ansible_python_bin.stdout }} -c 'import pexpect'"
+      register: pexpect_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install pexpect using Ansible's Python
+      pip:
+        name: pexpect
+        executable: "{{ ansible_python_bin.stdout }} -m pip"
+      when: pexpect_check.rc != 0
+
+    - name: Check if EKS cluster exists and get current version
+      shell: eksctl get cluster --name {{ cluster_name }} --profile {{ aws_profile }} --region {{ aws_region }} --verbose 0 -o json | jq -r '.[].Version'
+      register: cluster_info
+      retries: 10
+      delay: 10
+      until: cluster_info.rc == 0
+      changed_when: false
+
+    - name: Extract current EKS version
+      set_fact:
+        current_eks_version: "{{ cluster_info.stdout }}"
+
+    - name: Current EKS Version
+      debug:
+        msg: "Current EKS Version: {{ cluster_info.stdout }}"
+
+    - name: Abort if the cluster is not running on {{ expected_current_version }}
+      fail:
+        msg: "Cluster is running on version {{ current_eks_version }}. Expected {{ expected_current_version }}. Aborting upgrade."
+      when: current_eks_version != expected_current_version
+
+    - name: Start EKS Control Plane Upgrade (Live Streaming)
+      ansible.builtin.expect:
+        command: eksctl upgrade cluster --name={{ cluster_name }} --profile={{ aws_profile }} --region={{ aws_region }} --version={{ k8s_version }} --approve -v 4
+        responses: {}
+        timeout: 7200
+      register: upgrade_output
+      no_log: false
+
+    - name: Verify Control Plane Upgrade Success
+      debug:
+        msg: "Control plane upgrade output: {{ upgrade_output }}"
+
+    - name: Wait for Control Plane Upgrade to Complete
+      shell: eksctl get cluster --name {{ cluster_name }} --profile {{ aws_profile }} --region {{ aws_region }} --verbose 0 -o json | jq -r '.[].Version'
+      register: cluster_status
+      until: "'{{ k8s_version }}' in cluster_status.stdout"
+      retries: "{{ retry_count }}"
+      delay: "{{ retry_delay }}"
+
+    - name: Verify Control Plane Upgrade Success
+      debug:
+        msg: "Control plane successfully upgraded to {{ k8s_version }}"
+
+    - name: Get current add-ons
+      shell: eksctl get addons --cluster={{ cluster_name }} --profile={{ aws_profile }} --region={{ aws_region }}
+      register: addons_output
+      changed_when: false
+
+    - name: Upgrade EKS Add-ons
+      ansible.builtin.expect:
+        command: eksctl update addon --name={{ item }} --version latest --cluster={{ cluster_name }} --profile={{ aws_profile }} --region={{ aws_region }} -v 4
+        responses: {}
+        timeout: 7200
+      with_items:
+        - "coredns"
+        - "eks-pod-identity-agent"
+        - "kube-proxy"
+        - "vpc-cni"
+        - "aws-ebs-csi-driver"
+      when: "item in addons_output.stdout"
+
+    - name: Check if Cluster Autoscaler is installed
+      shell: kubectl get deployment -n kube-system | grep cluster-autoscaler
+      register: autoscaler_check
+      failed_when: false
+      changed_when: false
+
+    - name: Upgrade Cluster Autoscaler
+      shell: kubectl -n kube-system set image deployment.apps/cluster-autoscaler cluster-autoscaler=k8s.gcr.io/autoscaling/cluster-autoscaler:v1.31.1
+      when: autoscaler_check.rc == 0
+
+    - name: Get all node groups in the cluster
+      shell: eksctl get nodegroup --cluster={{ cluster_name }} --profile={{ aws_profile }} --region={{ aws_region }} -o json
+      register: nodegroups_output
+      changed_when: false
+
+    - name: Parse node group names
+      set_fact:
+        node_groups: "{{ nodegroups_output.stdout | from_json | map(attribute='Name') | list }}"
+
+    - name: Upgrade each node group (one at a time)
+      ansible.builtin.expect:
+        command: eksctl upgrade nodegroup --name={{ item }} --cluster={{ cluster_name }} --kubernetes-version={{ k8s_version }} --profile={{ aws_profile }} -v 4
+        responses: {}
+        timeout: 7200
+      register: nodegroup_upgrade
+      no_log: false
+      with_items: "{{ node_groups }}"
+
+    - name: Verify Kubernetes Version
+      shell: kubectl version
+      register: k8s_version_output
+      changed_when: false
+
+    - name: Verify Upgraded Worker Nodes
+      shell: kubectl get nodes -o wide
+      register: nodes_output
+      changed_when: false
+
+    - name: Display Upgrade Results
+      debug:
+        msg:
+          - "Kubernetes Version: {{ k8s_version_output.stdout }}"
+          - "Upgraded Nodes: {{ nodes_output.stdout }}"
