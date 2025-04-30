@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bitbucket-runner
+  namespace: default  # Change to your desired namespace
+  labels:
+    app: bitbucket-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitbucket-runner
+  template:
+    metadata:
+      labels:
+        app: bitbucket-runner
+    spec:
+      containers:
+      - name: bitbucket-runner
+        image: atlassian/default-image:2  # <-- Example runner image, replace with correct runner image if needed
+        env:
+        - name: RUNNER_UID
+          value: "1001"  # Adjust if necessary
+        - name: RUNNER_GID
+          value: "1001"
+        - name: ACCOUNT_UUID
+          value: "<your-bitbucket-workspace-UUID>"
+        - name: REPOSITORY_UUID
+          value: "<your-bitbucket-repository-UUID>"
+        - name: RUNNER_UUID
+          value: "<your-runner-UUID>"
+        - name: RUNNER_TOKEN
+          value: "<your-runner-token>"  # Prefer injecting as Kubernetes Secret for production
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
