@@ -1,14 +1,14 @@
 ---
 # vars file for roles/bitbucket-runner
-runner_name: "runner-ecab10fe-69ce-5850-972e-d7a0db4bfd19"
-runner_namespace: "bitbucket-runner"
-account_uuid: "11111111111-111111-111111-11111-1111111111"
-runner_uuid: "11111111111-111111-111111-11111-1111111111"
-repository_uuid: "11111111111-111111-111111-11111-1111111111"
+# runner_name: "runner-ecab10fe-69ce-5850-972e-d7a0db4bfd19"
+# runner_namespace: "bitbucket-runner"
+# account_uuid: "11111111111-111111-111111-11111-1111111111"
+# runner_uuid: "11111111111-111111-111111-11111-1111111111"
+# repository_uuid: "11111111111-111111-111111-11111-1111111111"
 
-# Environment-specific secrets
-oauth_client_id: "11111111111111111111"
-oauth_client_secret: "12231231231231231231232131231231231231231213"
+# # Environment-specific secrets
+# oauth_client_id: "11111111111111111111"
+# oauth_client_secret: "12231231231231231231232131231231231231231213"
 
 # Namespace based on the environment
-namespace: "bitbucket-runner"
+# namespace: "bitbucket-runner"
