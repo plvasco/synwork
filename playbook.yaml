@@ -4,8 +4,18 @@
   vars:
     eks_api_token: "{{ eks_token_json.stdout | from_json | json_query('status.token') }}"
     kubeconfig: "~/.kube/config"
-    AWS_PROFILE: "profile-with-access-to-eks"
+    AWS_PROFILE: "engy"
+    EKS_CLUSTER_NAME: "e2g-eks-mng-al2"
+    # Bitbucket runner configuration
+    runner_name: "RUNNER NAME"
+    runner_namespace: "bitbucket-runner"
+    account_uuid: "ACCOUNT UUID"
+    runner_uuid: "RUNNER UUID"
+    repository_uuid: "REPOSITORY UUID"
 
+    # Environment-specific secrets
+    oauth_client_id: "QsIVxipvjYjYKFbBgJPXiVluJkvzDynN"
+    oauth_client_secret: "oauth secret"    
   tasks:
     - name: Include bitbucket-runner role
       ansible.builtin.include_role:
